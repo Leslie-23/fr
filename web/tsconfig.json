@@ -6,7 +6,8 @@
     { "path": "./tsconfig.node.json" }
   ],
   "compilerOptions": {
-    "composite": true
+    "composite": true,
+    "allowJs": true
   },
   "exclude": ["node_modules", "web"],
   "include": ["./vite.config.ts"]
