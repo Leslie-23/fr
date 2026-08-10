@@ -25,7 +25,7 @@
     "emitDeclarationOnly": true,
 
     "paths": {
-      "@domain/*": ["../src/domain/*"]
+      "@domain/*": ["./src/domain/*"]
     },
 
     "noUnusedLocals": true,
@@ -36,5 +36,5 @@
 
   "include": ["src", "../src/domain"],
 
-  "exclude": ["node_modules", "../src/domain/**/*.test.ts"]
+  "exclude": ["node_modules", "./src/domain/**/*.test.ts"]
 }
