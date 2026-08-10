@@ -14,7 +14,7 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
-    // "noEmit": true,
+    // "noEmit": true, git push --set-upstream origin main
     "jsx": "react-jsx",
     "paths": {
       "@domain/*": ["../src/domain/*"]
