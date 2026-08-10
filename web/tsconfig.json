@@ -1,15 +1,11 @@
 {
   "files": [],
   "references": [
-    // {"composite": true},
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ],
-  "compilerOptions": {
-    "composite": true,
-    "allowJs": true,
-    "types": ["vite/client", "jest", "node", "web", "vite-tsconfig-paths"]
-  },
-  "exclude": ["node_modules", "web"],
-  "include": ["./vite.config.ts"]
+    {
+      "path": "./tsconfig.app.json"
+    },
+    {
+      "path": "./tsconfig.node.json"
+    }
+  ]
 }
