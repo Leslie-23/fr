@@ -1,7 +1,13 @@
 {
   "files": [],
   "references": [
+    // {"composite": true},
     { "path": "./tsconfig.app.json" },
     { "path": "./tsconfig.node.json" }
-  ]
+  ],
+  "compilerOptions": {
+    "composite": true
+  },
+  "exclude": ["node_modules", "web"],
+  "include": ["src", "../src/domain", "./vite.config.ts"]
 }
