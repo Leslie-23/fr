@@ -1,8 +1,17 @@
 import { firstDayOfTaxYear, installmentDueDate, taxYearForDate } from '../dates';
 import type { ActivityEntry } from '../entries';
 import { sumByType } from '../entries';
-import type { TaxRuleSet } from './rules';
+import type { TaxBracket, TaxRuleSet } from './rules';
 import { getActiveTaxRuleSet } from './rules';
+
+/** The bracket a given turnover falls into, or null if it's above the presumptive ceiling. */
+export function findBracket(turnover: number, ruleSet: TaxRuleSet): TaxBracket | null {
+  return (
+    ruleSet.brackets.find(
+      (b) => turnover >= b.lowerBoundSle && (b.upperBoundSle === null || turnover <= b.upperBoundSle)
+    ) ?? null
+  );
+}
 
 /**
  * Presumptive tax is levied on gross turnover, not profit — expenses never reduce it.
@@ -13,9 +22,7 @@ export function calculatePresumptiveTax(turnover: number, ruleSet: TaxRuleSet): 
   if (turnover < ruleSet.presumptiveMinTurnoverSle) return 0;
   if (turnover > ruleSet.presumptiveMaxTurnoverSle) return null;
 
-  const bracket = ruleSet.brackets.find(
-    (b) => turnover >= b.lowerBoundSle && (b.upperBoundSle === null || turnover <= b.upperBoundSle)
-  );
+  const bracket = findBracket(turnover, ruleSet);
   if (!bracket) {
     throw new Error(`No tax bracket found for turnover ${turnover} in rule set ${ruleSet.id}`);
   }
@@ -25,9 +32,11 @@ export function calculatePresumptiveTax(turnover: number, ruleSet: TaxRuleSet): 
 }
 
 export interface PeriodTaxResult {
+  taxYear: number;
   cumulativeTurnoverSle: number;
   periodExpensesSle: number;
   estimatedPresumptiveTaxSle: number | null;
+  matchedBracket: TaxBracket | null;
   gstWarning: boolean;
   abovePresumptiveThresholdWarning: boolean;
   installmentDueDate: string;
@@ -55,9 +64,11 @@ export function calculatePeriodTax(
   const estimatedPresumptiveTaxSle = calculatePresumptiveTax(cumulativeTurnoverSle, ruleSet);
 
   return {
+    taxYear,
     cumulativeTurnoverSle,
     periodExpensesSle,
     estimatedPresumptiveTaxSle,
+    matchedBracket: findBracket(cumulativeTurnoverSle, ruleSet),
     gstWarning: cumulativeTurnoverSle >= ruleSet.gstWarningThresholdSle,
     abovePresumptiveThresholdWarning: cumulativeTurnoverSle > ruleSet.presumptiveMaxTurnoverSle,
     installmentDueDate: installmentDueDate(periodEndDate),

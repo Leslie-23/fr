@@ -1,18 +1,37 @@
-import React from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { firstDayOfTaxYear, startOfMonth, startOfQuarter } from '../domain/dates';
 import { ActivityEntry, sumByType } from '../domain/entries';
 import { formatLe, todayIso } from '../domain/format';
 import { softDeleteEntry } from '../db/entriesRepository';
-import { colors } from '../theme/colors';
+import { DeletedEntriesScreen } from './DeletedEntriesScreen';
+import { LedgerColors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 import { fontFamily } from '../theme/typography';
 
 interface Props {
+  businessId: string;
   entries: ActivityEntry[];
   onEntryChanged: () => void;
 }
 
-function StatCard({ label, entries, start, end }: { label: string; entries: ActivityEntry[]; start: string; end: string }) {
+type DashboardStyles = ReturnType<typeof createStyles>;
+
+function StatCard({
+  label,
+  entries,
+  start,
+  end,
+  colors,
+  styles,
+}: {
+  label: string;
+  entries: ActivityEntry[];
+  start: string;
+  end: string;
+  colors: LedgerColors;
+  styles: DashboardStyles;
+}) {
   const sales = sumByType(entries, 'sale', start, end);
   const expenses = sumByType(entries, 'expense', start, end);
   const net = sales - expenses;
@@ -37,8 +56,11 @@ function relativeDate(entryDate: string, today: string): string {
   return entryDate;
 }
 
-export function DashboardScreen({ entries, onEntryChanged }: Props) {
+export function DashboardScreen({ businessId, entries, onEntryChanged }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const today = todayIso();
+  const [deletedVisible, setDeletedVisible] = useState(false);
 
   function handleDelete(entry: ActivityEntry) {
     Alert.alert(
@@ -59,6 +81,7 @@ export function DashboardScreen({ entries, onEntryChanged }: Props) {
   }
 
   return (
+    <>
     <FlatList
       style={styles.container}
       contentContainerStyle={styles.content}
@@ -69,14 +92,44 @@ export function DashboardScreen({ entries, onEntryChanged }: Props) {
           <Text style={styles.eyebrow}>Ledger summary</Text>
           <Text style={styles.heading}>How business is going</Text>
 
-          <View style={styles.statGrid}>
-            <StatCard label="Today" entries={entries} start={today} end={today} />
-            <StatCard label="This month" entries={entries} start={startOfMonth(today)} end={today} />
-            <StatCard label="This quarter" entries={entries} start={startOfQuarter(today)} end={today} />
-            <StatCard label="Year to date" entries={entries} start={firstDayOfTaxYear(today)} end={today} />
-          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.statGrid}
+          >
+            <StatCard label="Today" entries={entries} start={today} end={today} colors={colors} styles={styles} />
+            <StatCard
+              label="This month"
+              entries={entries}
+              start={startOfMonth(today)}
+              end={today}
+              colors={colors}
+              styles={styles}
+            />
+            <StatCard
+              label="This quarter"
+              entries={entries}
+              start={startOfQuarter(today)}
+              end={today}
+              colors={colors}
+              styles={styles}
+            />
+            <StatCard
+              label="Year to date"
+              entries={entries}
+              start={firstDayOfTaxYear(today)}
+              end={today}
+              colors={colors}
+              styles={styles}
+            />
+          </ScrollView>
 
-          <Text style={styles.listHeading}>Recent entries</Text>
+          <View style={styles.listHeadingRow}>
+            <Text style={styles.listHeading}>Recent entries</Text>
+            <Pressable onPress={() => setDeletedVisible(true)}>
+              <Text style={styles.deletedLink}>Deleted entries ›</Text>
+            </Pressable>
+          </View>
           {entries.length === 0 && (
             <Text style={styles.emptyText}>Nothing logged yet. Use the Add tab to record your first sale or expense.</Text>
           )}
@@ -105,10 +158,19 @@ export function DashboardScreen({ entries, onEntryChanged }: Props) {
         </View>
       )}
     />
+
+    <DeletedEntriesScreen
+      visible={deletedVisible}
+      businessId={businessId}
+      onClose={() => setDeletedVisible(false)}
+      onRestored={onEntryChanged}
+    />
+    </>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: LedgerColors) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
   content: { padding: 22, paddingBottom: 32 },
   eyebrow: {
@@ -128,12 +190,11 @@ const styles = StyleSheet.create({
   },
   statGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 10,
+    paddingRight: 12,
   },
   statCard: {
-    flexBasis: '47%',
-    flexGrow: 1,
+    width: 158,
     gap: 3,
     backgroundColor: colors.paper,
     borderWidth: 1,
@@ -152,14 +213,25 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.monoSemiBold,
     fontSize: 17,
     color: colors.ink,
+    flexShrink: 1,
   },
-  statBreakdown: { flexDirection: 'row', gap: 8, marginTop: 1 },
+  statBreakdown: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 1 },
+  listHeadingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 22,
+    marginBottom: 4,
+  },
   listHeading: {
     fontFamily: fontFamily.bodySemiBold,
     fontSize: 15,
     color: colors.ink,
-    marginTop: 22,
-    marginBottom: 4,
+  },
+  deletedLink: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12.5,
+    color: colors.indigo,
   },
   emptyText: {
     fontFamily: fontFamily.body,
@@ -175,6 +247,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.line,
+    gap: 10,
   },
   entryDate: {
     fontFamily: fontFamily.bodyMedium,
@@ -187,9 +260,9 @@ const styles = StyleSheet.create({
     color: colors.inkSoft,
     marginTop: 1,
   },
-  entryActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  salesText: { fontFamily: fontFamily.monoSemiBold, color: colors.sale, fontSize: 13.5 },
-  expenseText: { fontFamily: fontFamily.monoSemiBold, color: colors.expense, fontSize: 13.5 },
+  entryActions: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1, minWidth: 0 },
+  salesText: { fontFamily: fontFamily.monoSemiBold, color: colors.sale, fontSize: 13.5, flexShrink: 1 },
+  expenseText: { fontFamily: fontFamily.monoSemiBold, color: colors.expense, fontSize: 13.5, flexShrink: 1 },
   deleteButton: {
     padding: 5,
     borderRadius: 6,

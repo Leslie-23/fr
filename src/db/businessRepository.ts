@@ -67,6 +67,52 @@ export async function getOrCreateDefaultBusiness(): Promise<BusinessProfile> {
   };
 }
 
+export interface SyncableBusiness extends BusinessProfile {
+  updatedAt: string;
+}
+
+/** Business profile including updated_at — for pushing to the sync server. */
+export async function getBusinessForSync(id: string): Promise<SyncableBusiness | null> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<BusinessProfileRow & { updated_at: string }>(
+    'SELECT * FROM business_profile WHERE id = ?',
+    [id]
+  );
+  return row ? { ...fromRow(row), updatedAt: row.updated_at } : null;
+}
+
+/** Upserts a business profile pulled from the sync server, but only if newer than the local copy. */
+export async function upsertBusinessFromServer(business: SyncableBusiness): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    `INSERT INTO business_profile
+      (id, business_name, owner_name, business_type, district, nra_tin, currency_code, uses_new_leone, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       business_name = excluded.business_name,
+       owner_name = excluded.owner_name,
+       business_type = excluded.business_type,
+       district = excluded.district,
+       nra_tin = excluded.nra_tin,
+       currency_code = excluded.currency_code,
+       uses_new_leone = excluded.uses_new_leone,
+       updated_at = excluded.updated_at
+     WHERE excluded.updated_at > business_profile.updated_at`,
+    [
+      business.id,
+      business.businessName,
+      business.ownerName,
+      business.businessType,
+      business.district,
+      business.nraTin,
+      business.currencyCode,
+      business.usesNewLeone ? 1 : 0,
+      business.updatedAt,
+      business.updatedAt,
+    ]
+  );
+}
+
 export async function updateBusinessProfile(
   id: string,
   updates: Partial<Pick<BusinessProfile, 'businessName' | 'ownerName' | 'businessType' | 'district' | 'nraTin'>>

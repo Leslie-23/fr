@@ -5,9 +5,10 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ledger.sl"
     },
     "android": {
       "adaptiveIcon": {
@@ -16,14 +17,27 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.ledger.sl"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-sqlite",
-      "expo-font"
+      "expo-font",
+      "expo-secure-store",
+      "expo-dev-client",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ledger accesses your photos so you can pick receipt images to scan.",
+          "cameraPermission": "Ledger accesses your camera so you can photograph receipts to scan."
+        }
+      ]
     ]
   }
 }

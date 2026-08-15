@@ -1,5 +1,5 @@
 export function formatLe(amountSle: number): string {
-  return `Le ${amountSle.toLocaleString('en-US')}`;
+  return `Le ${amountSle.toLocaleString('en-US')}`;
 }
 
 export function todayIso(): string {

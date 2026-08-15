@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Fab, InfoIcon } from '../components/Fab';
 import { calculatePeriodTax } from '../domain/tax/calculate';
 import { ActivityEntry } from '../domain/entries';
 import { formatLe, todayIso } from '../domain/format';
 import { SL_PRESUMPTIVE_2026 } from '../domain/tax/rules';
-import { colors } from '../theme/colors';
+import { TaxDetailScreen } from './TaxDetailScreen';
+import { LedgerColors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 import { fontFamily } from '../theme/typography';
 
 interface Props {
@@ -13,11 +16,15 @@ interface Props {
 }
 
 export function TaxEstimateScreen({ businessId, entries }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const [detailVisible, setDetailVisible] = useState(false);
   const result = calculatePeriodTax(entries, businessId, todayIso());
 
   return (
+    <View style={styles.container}>
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.eyebrow}>Presumptive tax · {result.taxRuleSetId}</Text>
+      <Text style={styles.eyebrow}>Presumptive tax · {result.taxYear} tax year</Text>
       <Text style={styles.heading}>What you'd owe NRA</Text>
       <Text style={styles.disclaimer}>
         An estimate to help you plan — not a filed return. Confirm with NRA or a qualified tax adviser before
@@ -71,12 +78,22 @@ export function TaxEstimateScreen({ businessId, entries }: Props) {
         year.
       </Text>
     </ScrollView>
+
+      <Fab
+        onPress={() => setDetailVisible(true)}
+        accessibilityLabel="See calculation details"
+        icon={<InfoIcon />}
+      />
+
+      <TaxDetailScreen visible={detailVisible} result={result} onClose={() => setDetailVisible(false)} />
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: LedgerColors) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
-  content: { padding: 22, gap: 14, paddingBottom: 32 },
+  content: { padding: 22, gap: 14, paddingBottom: 90 },
   eyebrow: {
     fontFamily: fontFamily.bodySemiBold,
     fontSize: 11,
@@ -137,10 +154,13 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.monoSemiBold,
     fontSize: 32,
     color: colors.onFill,
+    flexShrink: 1,
   },
-  statGrid: { flexDirection: 'row', gap: 10 },
+  statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   statCard: {
     flex: 1,
+    minWidth: 130,
+    flexShrink: 1,
     gap: 3,
     backgroundColor: colors.paper,
     borderWidth: 1,
@@ -160,6 +180,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.monoSemiBold,
     fontSize: 17,
     color: colors.ink,
+    flexShrink: 1,
   },
   notice: {
     borderLeftWidth: 3,
