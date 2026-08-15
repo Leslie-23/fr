@@ -1,18 +1,18 @@
-import { Router } from 'express';
-import bcrypt from 'bcryptjs';
-import { OAuth2Client } from 'google-auth-library';
-import { z } from 'zod';
-import { UserModel } from '../models/User';
-import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt';
+const { Router } = require('express');
+const bcrypt = require('bcryptjs');
+const { OAuth2Client } = require('google-auth-library');
+const { z } = require('zod');
+const { UserModel } = require('../models/User');
+const { signAccessToken, signRefreshToken, verifyRefreshToken } = require('../utils/jwt');
 
 // The web client ID is the correct audience even for native sign-in — Google issues ID
 // tokens against the web (server) client, not the iOS/Android client. See:
 // https://github.com/react-native-google-signin/google-signin#backend-server
 const googleClient = new OAuth2Client();
 
-export const authRouter = Router();
+const authRouter = Router();
 
-export function issueSession(userId: string, email: string) {
+function issueSession(userId, email) {
   return {
     accessToken: signAccessToken(userId),
     refreshToken: signRefreshToken(userId),
@@ -137,7 +137,7 @@ authRouter.post('/refresh', async (req, res) => {
     res.status(400).json({ error: 'Missing refreshToken' });
     return;
   }
-  let userId: string;
+  let userId;
   try {
     userId = verifyRefreshToken(refreshToken);
   } catch {
@@ -153,3 +153,5 @@ authRouter.post('/refresh', async (req, res) => {
 
   res.json({ accessToken: signAccessToken(userId) });
 });
+
+module.exports = { authRouter, issueSession };

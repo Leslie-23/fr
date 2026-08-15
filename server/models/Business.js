@@ -1,4 +1,4 @@
-import { Schema, model, InferSchemaType } from 'mongoose';
+const { Schema, model } = require('mongoose');
 
 const businessSchema = new Schema(
   {
@@ -15,6 +15,6 @@ const businessSchema = new Schema(
   { timestamps: true, _id: false }
 );
 
-export type Business = InferSchemaType<typeof businessSchema>;
+const BusinessModel = model('Business', businessSchema);
 
-export const BusinessModel = model('Business', businessSchema);
+module.exports = { BusinessModel };

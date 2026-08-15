@@ -1,12 +1,12 @@
-import { Router } from 'express';
-import { z } from 'zod';
-import { AuthedRequest, requireAuth } from '../middleware/auth';
-import { BusinessModel } from '../models/Business';
+const { Router } = require('express');
+const { z } = require('zod');
+const { requireAuth } = require('../middleware/auth');
+const { BusinessModel } = require('../models/Business');
 
-export const businessRouter = Router();
+const businessRouter = Router();
 businessRouter.use(requireAuth);
 
-businessRouter.get('/', async (req: AuthedRequest, res) => {
+businessRouter.get('/', async (req, res) => {
   const businesses = await BusinessModel.find({ userId: req.userId });
   res.json(businesses);
 });
@@ -23,7 +23,7 @@ const upsertSchema = z.object({
   updatedAt: z.string().optional(),
 });
 
-businessRouter.put('/', async (req: AuthedRequest, res) => {
+businessRouter.put('/', async (req, res) => {
   const parsed = upsertSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' });
@@ -44,3 +44,5 @@ businessRouter.put('/', async (req: AuthedRequest, res) => {
   );
   res.json(updated);
 });
+
+module.exports = { businessRouter };

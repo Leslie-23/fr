@@ -1,4 +1,4 @@
-import { Schema, model, InferSchemaType } from 'mongoose';
+const { Schema, model } = require('mongoose');
 
 const entrySchema = new Schema(
   {
@@ -14,6 +14,6 @@ const entrySchema = new Schema(
   { timestamps: true, _id: false }
 );
 
-export type Entry = InferSchemaType<typeof entrySchema>;
+const EntryModel = model('Entry', entrySchema);
 
-export const EntryModel = model('Entry', entrySchema);
+module.exports = { EntryModel };

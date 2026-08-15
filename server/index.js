@@ -1,9 +1,9 @@
-import 'dotenv/config';
-import { app } from './app';
-import { connectDb } from './db';
+require('dotenv/config');
+const app = require('./app');
+const { connectDb } = require('./db');
 
-// Local development entrypoint only — `npm run dev` / `npm start`. The Vercel deployment
-// uses api/index.ts instead, which doesn't call listen() at all (see that file for why).
+// Local development entrypoint only — `npm run dev` / `npm start`. Vercel invokes app.js
+// directly instead (zero-config Express detection), never calling listen() at all.
 async function main() {
   await connectDb();
 

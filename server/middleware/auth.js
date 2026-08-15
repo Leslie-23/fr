@@ -1,18 +1,13 @@
-import { NextFunction, Request, Response } from 'express';
-import { UserModel } from '../models/User';
-import { verifyAccessToken } from '../utils/jwt';
+const { UserModel } = require('../models/User');
+const { verifyAccessToken } = require('../utils/jwt');
 
-export interface AuthedRequest extends Request {
-  userId?: string;
-}
-
-export async function requireAuth(req: AuthedRequest, res: Response, next: NextFunction): Promise<void> {
+async function requireAuth(req, res, next) {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
     res.status(401).json({ error: 'Missing bearer token' });
     return;
   }
-  let userId: string;
+  let userId;
   try {
     userId = verifyAccessToken(header.slice('Bearer '.length));
   } catch {
@@ -31,3 +26,5 @@ export async function requireAuth(req: AuthedRequest, res: Response, next: NextF
   req.userId = userId;
   next();
 }
+
+module.exports = { requireAuth };
