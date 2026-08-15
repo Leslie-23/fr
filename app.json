@@ -8,7 +8,10 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ledger.sl"
+      "bundleIdentifier": "com.ledger.sl",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -38,6 +41,11 @@
           "cameraPermission": "Ledger accesses your camera so you can photograph receipts to scan."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "fb018467-6f89-4baa-b0f6-c1ada5ae7f31"
+      }
+    }
   }
 }
