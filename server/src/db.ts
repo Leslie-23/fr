@@ -13,7 +13,13 @@ let connectPromise: Promise<typeof mongoose> | null = null;
 export async function connectDb(): Promise<void> {
   if (!connectPromise) {
     const uri = process.env.MONGODB_URI ?? 'mongodb://localhost:27017/ledger';
-    connectPromise = mongoose.connect(uri);
+    connectPromise = mongoose.connect(uri).catch((err) => {
+      // Let the next request try again instead of caching a permanently-rejected promise —
+      // a transient failure (e.g. a cold-start network blip) shouldn't wedge the whole
+      // warm container for its remaining lifetime.
+      connectPromise = null;
+      throw err;
+    });
   }
   await connectPromise;
 }

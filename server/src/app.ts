@@ -19,7 +19,8 @@ app.use(async (_req, res, next) => {
   try {
     await connectDb();
     next();
-  } catch {
+  } catch (err) {
+    console.error('connectDb failed:', err);
     res.status(503).json({ error: 'Database unavailable' });
   }
 });
@@ -29,3 +30,10 @@ app.use('/auth', authRouter);
 app.use('/account', accountRouter);
 app.use('/business', businessRouter);
 app.use('/entries', entriesRouter);
+
+// Vercel's zero-config Express preset auto-detects src/app.{ts,js} specifically and requires
+// a default export (see https://vercel.com/docs/frameworks/backend/express) — this is what it
+// actually invokes per-request, not api/index.ts (removed; it was redundant with this, and
+// the two were conflicting: Vercel found this file's old named-only export invalid and Node
+// exited before api/index.ts's rewrite ever ran).
+export default app;
