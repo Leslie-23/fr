@@ -32,6 +32,10 @@ const GOOGLE_SIGNIN_SUPPORTED = Platform.OS !== "web";
 
 type Mode = "login" | "register";
 
+// Signup is two steps: credentials first (creates the real account), then this — asked only
+// once the account already exists, so skipping it never blocks getting into the app.
+type Step = "credentials" | "business";
+
 type BusinessFieldKey =
   | "businessName"
   | "ownerName"
@@ -39,9 +43,9 @@ type BusinessFieldKey =
   | "district"
   | "nraTin";
 
-// Every field below is optional — the section header already says so, so individual labels
+// Every field below is optional — the welcome copy already says so, so individual labels
 // don't repeat it (see businessRepository.ts's getOrCreateDefaultBusiness: this app never
-// gates use on a completed profile, so signup can't block on these either).
+// gates use on a completed profile).
 const BUSINESS_NAME_FIELD = {
   key: "businessName" as const,
   label: "Business name",
@@ -66,8 +70,12 @@ export function AuthScreen({ onAuthenticated }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [mode, setMode] = useState<Mode>("login");
+  const [step, setStep] = useState<Step>("credentials");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // Holds the account once step one succeeds — we don't hand it to onAuthenticated (which
+  // enters the main app) until the business-details step is finished or skipped.
+  const [pendingUser, setPendingUser] = useState<AuthUser | null>(null);
   const [businessFields, setBusinessFields] = useState<
     Record<BusinessFieldKey, string>
   >({
@@ -106,7 +114,7 @@ export function AuthScreen({ onAuthenticated }: Props) {
     });
   }
 
-  async function handleSubmit() {
+  async function handleSubmitCredentials() {
     if (!email.trim() || !password) {
       setError("Enter an email and password.");
       return;
@@ -119,8 +127,8 @@ export function AuthScreen({ onAuthenticated }: Props) {
         return;
       }
       const user = await register(email.trim(), password);
-      await saveBusinessDetailsFromSignup();
-      onAuthenticated(user);
+      setPendingUser(user);
+      setStep("business");
     } catch (err) {
       setError(
         err instanceof ApiError
@@ -130,6 +138,25 @@ export function AuthScreen({ onAuthenticated }: Props) {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function handleFinishSetup() {
+    if (!pendingUser) return;
+    setSubmitting(true);
+    try {
+      await saveBusinessDetailsFromSignup();
+    } catch {
+      // Best-effort — the profile is never required, and Account > Edit profile can finish
+      // it later, so a save hiccup here shouldn't strand someone outside the app.
+    } finally {
+      setSubmitting(false);
+      onAuthenticated(pendingUser);
+    }
+  }
+
+  function handleSkipSetup() {
+    if (!pendingUser) return;
+    onAuthenticated(pendingUser);
   }
 
   async function handleGoogleSignIn() {
@@ -156,6 +183,102 @@ export function AuthScreen({ onAuthenticated }: Props) {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (mode === "register" && step === "business") {
+    return (
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.eyebrow}>You're in</Text>
+          <Text style={styles.heading}>Tell us about your business</Text>
+          <Text style={styles.welcomeText}>
+            A few quick details help us tailor your tax estimates to Sierra
+            Leone's rules — and get your dashboard feeling like yours. Takes
+            less than a minute, and you can always finish it later from
+            Account.
+          </Text>
+
+          <View>
+            <Text style={styles.fieldLabel}>{BUSINESS_NAME_FIELD.label}</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={BUSINESS_NAME_FIELD.placeholder}
+              placeholderTextColor={colors.inkSoft}
+              value={businessFields.businessName}
+              onChangeText={(text) => setBusinessField("businessName", text)}
+            />
+          </View>
+
+          <View>
+            <Text style={styles.fieldLabel}>{OWNER_NAME_FIELD.label}</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={OWNER_NAME_FIELD.placeholder}
+              placeholderTextColor={colors.inkSoft}
+              value={businessFields.ownerName}
+              onChangeText={(text) => setBusinessField("ownerName", text)}
+            />
+          </View>
+
+          <View>
+            <Text style={styles.fieldLabel}>Business type</Text>
+            <BusinessTypeField
+              value={businessFields.businessType}
+              onChange={(text) => setBusinessField("businessType", text)}
+            />
+          </View>
+
+          <View>
+            <Text style={styles.fieldLabel}>District</Text>
+            <SelectField
+              label="District"
+              value={businessFields.district}
+              placeholder="Select a district"
+              options={SIERRA_LEONE_DISTRICTS}
+              onSelect={(text) => setBusinessField("district", text)}
+            />
+          </View>
+
+          <View>
+            <Text style={styles.fieldLabel}>{NRA_TIN_FIELD.label}</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={NRA_TIN_FIELD.placeholder}
+              placeholderTextColor={colors.inkSoft}
+              value={businessFields.nraTin}
+              onChangeText={(text) => setBusinessField("nraTin", text)}
+            />
+          </View>
+
+          <Pressable
+            style={[
+              styles.submitButton,
+              submitting && styles.submitButtonDisabled,
+            ]}
+            onPress={handleFinishSetup}
+            disabled={submitting}
+          >
+            <Text style={styles.submitButtonText}>
+              {submitting ? "Saving…" : "Finish setup"}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.skipButton}
+            onPress={handleSkipSetup}
+            disabled={submitting}
+          >
+            <Text style={styles.skipButtonText}>I'll do this later</Text>
+          </Pressable>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    );
   }
 
   return (
@@ -233,66 +356,6 @@ export function AuthScreen({ onAuthenticated }: Props) {
           onChangeText={setPassword}
         />
 
-        {mode === "register" && (
-          <>
-            <Text style={styles.sectionLabel}>
-              Tell us about your business (optional)
-            </Text>
-
-            <View>
-              <Text style={styles.fieldLabel}>{BUSINESS_NAME_FIELD.label}</Text>
-              <TextInput
-                style={styles.input}
-                placeholder={BUSINESS_NAME_FIELD.placeholder}
-                placeholderTextColor={colors.inkSoft}
-                value={businessFields.businessName}
-                onChangeText={(text) => setBusinessField("businessName", text)}
-              />
-            </View>
-
-            <View>
-              <Text style={styles.fieldLabel}>{OWNER_NAME_FIELD.label}</Text>
-              <TextInput
-                style={styles.input}
-                placeholder={OWNER_NAME_FIELD.placeholder}
-                placeholderTextColor={colors.inkSoft}
-                value={businessFields.ownerName}
-                onChangeText={(text) => setBusinessField("ownerName", text)}
-              />
-            </View>
-
-            <View>
-              <Text style={styles.fieldLabel}>Business type</Text>
-              <BusinessTypeField
-                value={businessFields.businessType}
-                onChange={(text) => setBusinessField("businessType", text)}
-              />
-            </View>
-
-            <View>
-              <Text style={styles.fieldLabel}>District</Text>
-              <SelectField
-                label="District"
-                value={businessFields.district}
-                placeholder="Select a district"
-                options={SIERRA_LEONE_DISTRICTS}
-                onSelect={(text) => setBusinessField("district", text)}
-              />
-            </View>
-
-            <View>
-              <Text style={styles.fieldLabel}>{NRA_TIN_FIELD.label}</Text>
-              <TextInput
-                style={styles.input}
-                placeholder={NRA_TIN_FIELD.placeholder}
-                placeholderTextColor={colors.inkSoft}
-                value={businessFields.nraTin}
-                onChangeText={(text) => setBusinessField("nraTin", text)}
-              />
-            </View>
-          </>
-        )}
-
         {error && <Text style={styles.errorText}>{error}</Text>}
 
         <Pressable
@@ -300,7 +363,7 @@ export function AuthScreen({ onAuthenticated }: Props) {
             styles.submitButton,
             submitting && styles.submitButtonDisabled,
           ]}
-          onPress={handleSubmit}
+          onPress={handleSubmitCredentials}
           disabled={submitting}
         >
           <Text style={styles.submitButtonText}>
@@ -308,7 +371,7 @@ export function AuthScreen({ onAuthenticated }: Props) {
               ? "Please wait…"
               : mode === "login"
                 ? "Log in"
-                : "Create account"}
+                : "Continue"}
           </Text>
         </Pressable>
 
@@ -359,6 +422,13 @@ const createStyles = (colors: LedgerColors) =>
       letterSpacing: -0.2,
       marginBottom: 6,
     },
+    welcomeText: {
+      fontFamily: fontFamily.body,
+      fontSize: 14,
+      lineHeight: 20,
+      color: colors.inkSoft,
+      marginBottom: 6,
+    },
     segmented: {
       flexDirection: "row",
       gap: 4,
@@ -387,17 +457,6 @@ const createStyles = (colors: LedgerColors) =>
       color: colors.inkSoft,
       marginTop: 4,
       marginBottom: 3,
-    },
-    sectionLabel: {
-      fontFamily: fontFamily.bodySemiBold,
-      fontSize: 12,
-      textTransform: "uppercase",
-      letterSpacing: 0.4,
-      color: colors.inkSoft,
-      marginTop: 10,
-      borderTopWidth: 1,
-      borderTopColor: colors.line,
-      paddingTop: 14,
     },
     input: {
       borderWidth: 1.5,
@@ -428,6 +487,15 @@ const createStyles = (colors: LedgerColors) =>
       fontFamily: fontFamily.bodySemiBold,
       fontSize: 15,
       color: colors.onFill,
+    },
+    skipButton: {
+      paddingVertical: 10,
+      alignItems: "center",
+    },
+    skipButtonText: {
+      fontFamily: fontFamily.bodySemiBold,
+      fontSize: 13.5,
+      color: colors.inkSoft,
     },
     dividerRow: {
       flexDirection: "row",

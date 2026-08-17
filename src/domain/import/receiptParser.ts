@@ -1,5 +1,5 @@
 import { todayIso } from '../format';
-import { DraftEntry } from './draftEntry';
+import type { DraftEntry } from './draftEntry';
 
 const AMOUNT_REGEX = /\d{1,3}(?:[,.\s]\d{3})+(?:\.\d{2})?|\d+(?:\.\d{2})?/g;
 

@@ -1,6 +1,6 @@
 import Papa from 'papaparse';
-import { ActivityType } from '../entries';
-import { DraftEntry } from './draftEntry';
+import type { ActivityType } from '../entries';
+import type { DraftEntry } from './draftEntry';
 
 export interface RowError {
   rowNumber: number;

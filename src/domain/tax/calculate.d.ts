@@ -1,5 +1,7 @@
 import type { ActivityEntry } from '../entries';
-import type { TaxRuleSet } from './rules';
+import type { TaxBracket, TaxRuleSet } from './rules';
+/** The bracket a given turnover falls into, or null if it's above the presumptive ceiling. */
+export declare function findBracket(turnover: number, ruleSet: TaxRuleSet): TaxBracket | null;
 /**
  * Presumptive tax is levied on gross turnover, not profit — expenses never reduce it.
  * Returns null when turnover is above the presumptive-regime ceiling: the UI must
@@ -7,9 +9,11 @@ import type { TaxRuleSet } from './rules';
  */
 export declare function calculatePresumptiveTax(turnover: number, ruleSet: TaxRuleSet): number | null;
 export interface PeriodTaxResult {
+    taxYear: number;
     cumulativeTurnoverSle: number;
     periodExpensesSle: number;
     estimatedPresumptiveTaxSle: number | null;
+    matchedBracket: TaxBracket | null;
     gstWarning: boolean;
     abovePresumptiveThresholdWarning: boolean;
     installmentDueDate: string;
